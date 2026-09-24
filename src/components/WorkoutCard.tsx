@@ -10,7 +10,6 @@ const WorkoutCard = ({ workout }: WorkoutCardProps) => {
   return (
     <Link href={`/workout/${workout.id}`}>
       <article className="cursor-pointer overflow-hidden rounded-lg border border-[#24272e] bg-[#15171c] transition hover:border-[#ccff00]">
-
         {/* Image */}
         <div className="w-full">
           <Image
@@ -18,13 +17,12 @@ const WorkoutCard = ({ workout }: WorkoutCardProps) => {
             alt={workout.name}
             width={500}
             height={300}
-            className="h-44 w-full object-cover"
+            className="h-40 w-full object-cover sm:h-44"
           />
         </div>
 
         {/* Content */}
         <div className="p-4">
-
           {/* Muscle Groups */}
           <div className="mb-3 flex flex-wrap gap-2">
             {workout.muscleGroups.map((muscle) => (
@@ -38,7 +36,7 @@ const WorkoutCard = ({ workout }: WorkoutCardProps) => {
           </div>
 
           {/* Name */}
-          <h3 className="text-base font-bold uppercase text-white">
+          <h3 className="text-sm font-bold uppercase text-white sm:text-base">
             {workout.name}
           </h3>
 
@@ -48,12 +46,11 @@ const WorkoutCard = ({ workout }: WorkoutCardProps) => {
           </p>
 
           {/* Stats */}
-          <div className="mt-4 flex items-center gap-4 border-t border-[#25282f] pt-3 text-[10px] text-gray-500">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[#25282f] pt-3 text-[10px] text-gray-500 sm:gap-4">
             <span>◷ {workout.duration} min</span>
             <span>🔥 {workout.caloriesBurned} kcal</span>
             <span>★ {workout.rating}</span>
           </div>
-
         </div>
       </article>
     </Link>

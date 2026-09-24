@@ -57,10 +57,13 @@ const Navbar = () => {
   const isMyPlanPage = pathname === "/my-plan";
 
   return (
-    <nav className="flex h-16 items-center justify-between border-b border-[#202126] bg-[#0b0c0f] px-9">
+    <nav className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-[#202126] bg-[#0b0c0f] px-4 py-3 sm:px-6 lg:h-16 lg:flex-nowrap lg:px-9 lg:py-0">
 
       {/* LOGO */}
-      <Link href="/" className="flex items-center gap-2.5">
+      <Link
+        href="/"
+        className="flex shrink-0 items-center gap-2.5"
+      >
         <Image
           src="/assets/logo.png"
           alt="FitLog Logo"
@@ -68,17 +71,16 @@ const Navbar = () => {
           height={26}
         />
 
-        <span className="text-[20px] font-extrabold tracking-tight text-white">
+        <span className="text-[18px] font-extrabold tracking-tight text-white sm:text-[20px]">
           FITLOG
         </span>
       </Link>
 
       {/* NAVIGATION */}
-      <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1">
-
+      <div className="order-3 flex w-full items-center justify-center gap-1 sm:order-0 sm:w-auto">
         <Link
           href="/"
-          className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${
+          className={`rounded-full px-4 py-2 text-[12px] font-medium transition sm:px-5 sm:text-[13px] ${
             isWorkoutsPage
               ? "bg-[#17240c] text-[#ccff00]"
               : "text-[#9699a3] hover:text-white"
@@ -89,7 +91,7 @@ const Navbar = () => {
 
         <Link
           href="/my-plan"
-          className={`rounded-full px-5 py-2 text-[13px] font-medium transition ${
+          className={`rounded-full px-4 py-2 text-[12px] font-medium transition sm:px-5 sm:text-[13px] ${
             isMyPlanPage
               ? "bg-[#17240c] text-[#ccff00]"
               : "text-[#9699a3] hover:text-white"
@@ -97,22 +99,21 @@ const Navbar = () => {
         >
           My Plan
         </Link>
-
       </div>
 
       {/* COUNTERS */}
-      <div className="flex items-center gap-6">
+      <div className="flex shrink-0 items-center gap-3 sm:gap-6">
 
         {/* PLAN */}
         <Link
           href="/my-plan"
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5 sm:gap-2"
         >
-          <span className="text-[13px] font-medium text-[#b5b7c0]">
+          <span className="text-[12px] font-medium text-[#b5b7c0] sm:text-[13px]">
             Plan
           </span>
 
-          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#ccff00] px-1.5 text-[12px] font-bold text-black">
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#ccff00] px-1.5 text-[11px] font-bold text-black sm:text-[12px]">
             {planCount}
           </span>
         </Link>
@@ -120,19 +121,18 @@ const Navbar = () => {
         {/* SAVED */}
         <Link
           href="/my-plan"
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5 sm:gap-2"
         >
-          <span className="text-[13px] font-medium text-[#9699a3]">
+          <span className="text-[12px] font-medium text-[#9699a3] sm:text-[13px]">
             Saved
           </span>
 
-          <span className="flex h-6 min-w-6 items-center justify-center rounded-full border border-[#3a3d46] px-1.5 text-[12px] font-medium text-[#b5b7c0]">
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full border border-[#3a3d46] px-1.5 text-[11px] font-medium text-[#b5b7c0] sm:text-[12px]">
             {savedCount}
           </span>
         </Link>
 
       </div>
-
     </nav>
   );
 };
