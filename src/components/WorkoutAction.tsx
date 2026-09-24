@@ -20,6 +20,7 @@ const WorkoutActions = ({ workout }: WorkoutActionsProps) => {
     }, 2000);
   };
 
+  // Add workout to Today's Plan
   const addToPlan = () => {
     try {
       const savedPlan = localStorage.getItem("fitlog-plan");
@@ -51,9 +52,12 @@ const WorkoutActions = ({ workout }: WorkoutActionsProps) => {
         JSON.stringify(updatedPlan)
       );
 
+      // Update Navbar counter
+      window.dispatchEvent(new Event("fitlog-update"));
+
       showToast("Added to today's plan");
 
-      // Go to My Plan after a short delay
+      // Go to My Plan
       setTimeout(() => {
         router.push("/my-plan");
       }, 700);
@@ -63,16 +67,17 @@ const WorkoutActions = ({ workout }: WorkoutActionsProps) => {
     }
   };
 
+  // Save workout for later
   const saveForLater = () => {
     try {
-      const savedWorkouts = localStorage.getItem(
-        "fitlog-saved"
-      );
+      const savedWorkouts =
+        localStorage.getItem("fitlog-saved");
 
       const saved: Workout[] = savedWorkouts
         ? JSON.parse(savedWorkouts)
         : [];
 
+      // Already saved?
       const alreadySaved = saved.some(
         (item) => item.id === workout.id
       );
@@ -89,8 +94,12 @@ const WorkoutActions = ({ workout }: WorkoutActionsProps) => {
         JSON.stringify(updatedSaved)
       );
 
+      // Update Navbar counter
+      window.dispatchEvent(new Event("fitlog-update"));
+
       showToast("Saved for later");
 
+      // Go to My Plan
       setTimeout(() => {
         router.push("/my-plan");
       }, 700);
@@ -100,17 +109,43 @@ const WorkoutActions = ({ workout }: WorkoutActionsProps) => {
     }
   };
 
+  // Check whether plan already has 5 workouts
+  let planFull = false;
+
+  try {
+    const savedPlan = localStorage.getItem("fitlog-plan");
+
+    const plan: Workout[] = savedPlan
+      ? JSON.parse(savedPlan)
+      : [];
+
+    planFull = plan.length >= 5;
+  } catch {
+    planFull = false;
+  }
+
   return (
     <>
       <div className="mt-7 flex flex-wrap gap-3">
+
+        {/* Add to Today's Plan */}
         <button
           type="button"
           onClick={addToPlan}
-          className="rounded-lg bg-[#ccff00] px-5 py-3 text-xs font-bold text-black transition hover:bg-[#b8e600]"
+          disabled={planFull}
+          className={`rounded-lg px-5 py-3 text-xs font-bold transition ${
+            planFull
+              ? "cursor-not-allowed bg-[#30343b] text-gray-500"
+              : "bg-[#ccff00] text-black hover:bg-[#b8e600]"
+          }`}
         >
-          ✓ Add to today`s plan
+          ✓{" "}
+          {planFull
+            ? "Plan is full (5/5)"
+            : "Add to today's plan"}
         </button>
 
+        {/* Save for Later */}
         <button
           type="button"
           onClick={saveForLater}
@@ -120,6 +155,7 @@ const WorkoutActions = ({ workout }: WorkoutActionsProps) => {
         </button>
       </div>
 
+      {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-[#303640] bg-[#151920] px-5 py-3 text-sm text-white shadow-lg">
           {toast}

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner"
+import { toast } from "sonner";
 import {
   Check,
   Clock3,
@@ -11,6 +11,7 @@ import {
   Star,
   X,
   ChevronDown,
+  Search,
 } from "lucide-react";
 
 interface Workout {
@@ -35,13 +36,10 @@ type SortOption = "duration" | "calories" | "rating";
 export default function MyPlanPage() {
   const [plan, setPlan] = useState<Workout[]>([]);
   const [saved, setSaved] = useState<Workout[]>([]);
-
   const [activeTab, setActiveTab] = useState<Tab>("plan");
   const [sortBy, setSortBy] = useState<SortOption>("duration");
-
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
-
-
 
   useEffect(() => {
     const loadData = () => {
@@ -54,7 +52,6 @@ export default function MyPlanPage() {
             const parsedPlan = JSON.parse(savedPlan);
 
             if (Array.isArray(parsedPlan)) {
-
               setPlan(parsedPlan);
             }
           } catch (error) {
@@ -67,7 +64,6 @@ export default function MyPlanPage() {
             const parsedSaved = JSON.parse(savedData);
 
             if (Array.isArray(parsedSaved)) {
-
               setSaved(parsedSaved);
             }
           } catch (error) {
@@ -77,7 +73,6 @@ export default function MyPlanPage() {
       } catch (error) {
         console.error("Failed to load FitLog data:", error);
       } finally {
-
         setIsLoaded(true);
       }
     };
@@ -85,13 +80,11 @@ export default function MyPlanPage() {
     loadData();
   }, []);
 
-
   useEffect(() => {
     if (!isLoaded) return;
 
     localStorage.setItem("fitlog-plan", JSON.stringify(plan));
   }, [plan, isLoaded]);
-
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -99,13 +92,26 @@ export default function MyPlanPage() {
     localStorage.setItem("fitlog-saved", JSON.stringify(saved));
   }, [saved, isLoaded]);
 
-
-
   const currentList = activeTab === "plan" ? plan : saved;
 
+  // Search by workout name or muscle group/tag
+  const filteredList = currentList.filter((workout) => {
+    const query = searchQuery.toLowerCase().trim();
 
+    if (!query) return true;
 
-  const sortedList = [...currentList].sort((a, b) => {
+    const nameMatch = workout.name
+      .toLowerCase()
+      .includes(query);
+
+    const tagMatch = workout.muscleGroups.some((muscle) =>
+      muscle.toLowerCase().includes(query)
+    );
+
+    return nameMatch || tagMatch;
+  });
+
+  const sortedList = [...filteredList].sort((a, b) => {
     if (sortBy === "duration") {
       return a.duration - b.duration;
     }
@@ -121,8 +127,6 @@ export default function MyPlanPage() {
     return 0;
   });
 
-
-
   const totalExercises = plan.length;
 
   const totalMinutes = plan.reduce(
@@ -135,43 +139,72 @@ export default function MyPlanPage() {
     0
   );
 
+  const removeFromPlan = (id: number) => {
+    setPlan((currentPlan) => {
+      const updatedPlan = currentPlan.filter(
+        (workout) => workout.id !== id
+      );
 
+      localStorage.setItem(
+        "fitlog-plan",
+        JSON.stringify(updatedPlan)
+      );
 
-const removeFromPlan = (id: number) => {
-  setPlan((currentPlan) =>
-    currentPlan.filter((workout) => workout.id !== id)
-  );
+      return updatedPlan;
+    });
 
-  toast("Workout removed from today's plan", {
-    position: "bottom-right",
-  });
-};
+    window.dispatchEvent(new Event("fitlog-update"));
 
-const removeFromSaved = (id: number) => {
-  setSaved((currentSaved) =>
-    currentSaved.filter((workout) => workout.id !== id)
-  );
+    toast("Workout removed from today's plan", {
+      position: "bottom-right",
+    });
+  };
 
-  toast("Workout removed from saved", {
-    position: "bottom-right",
-  });
-};
+  const removeFromSaved = (id: number) => {
+    setSaved((currentSaved) => {
+      const updatedSaved = currentSaved.filter(
+        (workout) => workout.id !== id
+      );
 
-const markAsDone = (workout: Workout) => {
-  setPlan((currentPlan) =>
-    currentPlan.filter((item) => item.id !== workout.id)
-  );
+      localStorage.setItem(
+        "fitlog-saved",
+        JSON.stringify(updatedSaved)
+      );
 
-  toast(`${workout.name} marked as done`, {
-    position: "bottom-right",
-  });
-};
+      return updatedSaved;
+    });
+
+    window.dispatchEvent(new Event("fitlog-update"));
+
+    toast("Workout removed from saved", {
+      position: "bottom-right",
+    });
+  };
+
+  const markAsDone = (workout: Workout) => {
+    setPlan((currentPlan) => {
+      const updatedPlan = currentPlan.filter(
+        (item) => item.id !== workout.id
+      );
+
+      localStorage.setItem(
+        "fitlog-plan",
+        JSON.stringify(updatedPlan)
+      );
+
+      return updatedPlan;
+    });
+
+    window.dispatchEvent(new Event("fitlog-update"));
+
+    toast(`${workout.name} marked as done`, {
+      position: "bottom-right",
+    });
+  };
 
   return (
     <main className="min-h-screen bg-[#0b0c0f] text-white">
       <div className="mx-auto min-h-screen max-w-295">
-
-        
 
         <section className="px-5 pb-8 pt-10 md:px-8">
           <h1 className="text-4xl font-black uppercase tracking-tight">
@@ -179,17 +212,12 @@ const markAsDone = (workout: Workout) => {
           </h1>
 
           <p className="mt-2 text-sm text-gray-400">
-            Cap of five lifts for today. Finish them,
-            then load more.
+            Cap of five lifts for today. Finish them, then load more.
           </p>
         </section>
 
-        
-
         <section className="px-5 md:px-8">
           <div className="grid grid-cols-1 overflow-hidden rounded-xl border border-[#24272e] bg-[#13161c] md:grid-cols-3">
-
-
 
             <div className="border-b border-[#24272e] p-6 md:border-b-0 md:border-r">
               <p className="text-xs text-gray-500">
@@ -201,7 +229,6 @@ const markAsDone = (workout: Workout) => {
               </p>
             </div>
 
-
             <div className="border-b border-[#24272e] p-6 md:border-b-0 md:border-r">
               <p className="text-xs text-gray-500">
                 Minutes
@@ -211,8 +238,6 @@ const markAsDone = (workout: Workout) => {
                 {totalMinutes}
               </p>
             </div>
-
-
 
             <div className="p-6">
               <p className="text-xs text-gray-500">
@@ -227,12 +252,9 @@ const markAsDone = (workout: Workout) => {
           </div>
         </section>
 
-
-
         <section className="mt-6 flex flex-col gap-4 px-5 md:flex-row md:items-center md:justify-between md:px-8">
 
-
-
+          {/* Tabs */}
           <div className="flex w-fit rounded-lg border border-[#24272e] bg-[#13161c] p-1">
 
             <button
@@ -261,84 +283,106 @@ const markAsDone = (workout: Workout) => {
 
           </div>
 
- 
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 
-          <div className="flex items-center gap-2">
-
-            <span className="text-xs text-gray-500">
-              Sort By
-            </span>
-
-            <div className="relative">
-
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(e.target.value as SortOption)
-                }
-                className="appearance-none rounded-lg border border-[#24272e] bg-[#13161c] py-2 pl-3 pr-9 text-xs text-gray-300 outline-none"
-              >
-                <option value="duration">
-                  Duration
-                </option>
-
-                <option value="calories">
-                  Calories
-                </option>
-
-                <option value="rating">
-                  Rating
-                </option>
-              </select>
-
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+            {/* Search */}
+            <div className="relative w-full sm:w-72">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
               />
 
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) =>
+                  setSearchQuery(e.target.value)
+                }
+                placeholder="Search workout or muscle..."
+                className="w-full rounded-lg border border-[#24272e] bg-[#13161c] py-2.5 pl-9 pr-3 text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#c8ff00]"
+              />
             </div>
+
+            {/* Sort */}
+            <div className="flex items-center gap-2">
+
+              <span className="text-xs text-gray-500">
+                Sort By
+              </span>
+
+              <div className="relative">
+
+                <select
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(
+                      e.target.value as SortOption
+                    )
+                  }
+                  className="appearance-none rounded-lg border border-[#24272e] bg-[#13161c] py-2 pl-3 pr-9 text-xs text-gray-300 outline-none"
+                >
+                  <option value="duration">
+                    Duration
+                  </option>
+
+                  <option value="calories">
+                    Calories
+                  </option>
+
+                  <option value="rating">
+                    Rating
+                  </option>
+                </select>
+
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                />
+
+              </div>
+            </div>
+
           </div>
-
         </section>
-
-
 
         <section className="px-5 pb-20 pt-5 md:px-8">
 
-  
           {!isLoaded ? (
+
             <div className="flex min-h-75 items-center justify-center rounded-xl border border-[#24272e] bg-[#0e1014]">
               <div className="text-sm text-gray-500">
                 Loading workouts...
               </div>
             </div>
-          ) : sortedList.length === 0 ? (
 
- 
+          ) : sortedList.length === 0 ? (
 
             <div className="flex min-h-75 flex-col items-center justify-center rounded-xl border border-dashed border-[#292d35] bg-[#0e1014] text-center">
 
               <h2 className="text-xl font-black uppercase">
-                NOTHING HERE YET
+                {searchQuery
+                  ? "NO MATCHES FOUND"
+                  : "NOTHING HERE YET"}
               </h2>
 
               <p className="mt-2 max-w-md text-xs text-gray-500">
-                Browse the library and add a lift
-                to get today moving.
+                {searchQuery
+                  ? "Try searching with another workout name or muscle group."
+                  : "Browse the library and add a lift to get today moving."}
               </p>
 
-              <Link
-                href="/"
-                className="mt-5 rounded-full bg-[#c8ff00] px-6 py-3 text-xs font-bold text-black transition hover:brightness-110"
-              >
-                Go to workouts
-              </Link>
+              {!searchQuery && (
+                <Link
+                  href="/"
+                  className="mt-5 rounded-full bg-[#c8ff00] px-6 py-3 text-xs font-bold text-black transition hover:brightness-110"
+                >
+                  Go to workouts
+                </Link>
+              )}
 
             </div>
 
           ) : (
-
-
 
             <div className="space-y-3">
 
@@ -348,8 +392,6 @@ const markAsDone = (workout: Workout) => {
                   key={workout.id}
                   className="flex flex-col gap-5 rounded-xl border border-[#24272e] bg-[#13161c] p-3 transition hover:border-[#353a44] md:flex-row md:items-center"
                 >
-
-
 
                   <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-lg md:h-20 md:w-28">
 
@@ -363,8 +405,6 @@ const markAsDone = (workout: Workout) => {
 
                   </div>
 
-
-
                   <div className="min-w-0 flex-1">
 
                     <h2 className="text-sm font-black uppercase">
@@ -374,8 +414,6 @@ const markAsDone = (workout: Workout) => {
                     <p className="mt-1 text-xs text-gray-500">
                       {workout.equipment}
                     </p>
-
-
 
                     <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-400">
 
@@ -406,7 +444,6 @@ const markAsDone = (workout: Workout) => {
                     </div>
 
                   </div>
-
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
 
