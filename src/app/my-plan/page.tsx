@@ -31,22 +31,35 @@ interface Workout {
 }
 
 type Tab = "plan" | "saved";
+
 type SortOption = "duration" | "calories" | "rating";
 
 export default function MyPlanPage() {
   const [plan, setPlan] = useState<Workout[]>([]);
   const [saved, setSaved] = useState<Workout[]>([]);
+
   const [activeTab, setActiveTab] = useState<Tab>("plan");
-  const [sortBy, setSortBy] = useState<SortOption>("duration");
+
+  const [sortBy, setSortBy] =
+    useState<SortOption>("duration");
+
   const [searchQuery, setSearchQuery] = useState("");
+
   const [isLoaded, setIsLoaded] = useState(false);
 
+  /*
+   * Load Plan and Saved workouts from localStorage
+   *
+   * setTimeout(..., 0) prevents the React lint error:
+   * "Calling setState synchronously within an effect..."
+   */
   useEffect(() => {
-    const loadData = () => {
+    const timer = window.setTimeout(() => {
       try {
         const savedPlan = localStorage.getItem("fitlog-plan");
         const savedData = localStorage.getItem("fitlog-saved");
 
+        // Load Today's Plan
         if (savedPlan) {
           try {
             const parsedPlan = JSON.parse(savedPlan);
@@ -59,6 +72,7 @@ export default function MyPlanPage() {
           }
         }
 
+        // Load Saved workouts
         if (savedData) {
           try {
             const parsedSaved = JSON.parse(savedData);
@@ -71,154 +85,235 @@ export default function MyPlanPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to load FitLog data:", error);
+        console.error(
+          "Failed to load FitLog data:",
+          error
+        );
       } finally {
         setIsLoaded(true);
       }
-    };
+    }, 0);
 
-    loadData();
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, []);
 
+  /*
+   * Save Plan whenever plan state changes
+   */
   useEffect(() => {
     if (!isLoaded) return;
 
-    localStorage.setItem("fitlog-plan", JSON.stringify(plan));
+    localStorage.setItem(
+      "fitlog-plan",
+      JSON.stringify(plan)
+    );
   }, [plan, isLoaded]);
 
+  /*
+   * Save Saved workouts whenever saved state changes
+   */
   useEffect(() => {
     if (!isLoaded) return;
 
-    localStorage.setItem("fitlog-saved", JSON.stringify(saved));
+    localStorage.setItem(
+      "fitlog-saved",
+      JSON.stringify(saved)
+    );
   }, [saved, isLoaded]);
 
-  const currentList = activeTab === "plan" ? plan : saved;
+  /*
+   * Current tab's list
+   *
+   * Plan tab  -> plan
+   * Saved tab -> saved
+   */
+  const currentList =
+    activeTab === "plan" ? plan : saved;
 
-  // Search by workout name or muscle group/tag
-  const filteredList = currentList.filter((workout) => {
-    const query = searchQuery.toLowerCase().trim();
+  /*
+   * ================================
+   * TAB-SPECIFIC STATISTICS
+   * ================================
+   *
+   * Plan tab:
+   *    stats come from plan
+   *
+   * Saved tab:
+   *    stats come from saved
+   */
+  const totalExercises = currentList.length;
 
-    if (!query) return true;
+  const totalMinutes = currentList.reduce(
+    (total, workout) =>
+      total + workout.duration,
+    0
+  );
 
-    const nameMatch = workout.name
-      .toLowerCase()
-      .includes(query);
+  const totalCalories = currentList.reduce(
+    (total, workout) =>
+      total + workout.caloriesBurned,
+    0
+  );
 
-    const tagMatch = workout.muscleGroups.some((muscle) =>
-      muscle.toLowerCase().includes(query)
+  /*
+   * Search by workout name or muscle group
+   */
+  const filteredList = currentList.filter(
+    (workout) => {
+      const query = searchQuery
+        .toLowerCase()
+        .trim();
+
+      if (!query) return true;
+
+      const nameMatch = workout.name
+        .toLowerCase()
+        .includes(query);
+
+      const tagMatch =
+        workout.muscleGroups.some(
+          (muscle) =>
+            muscle
+              .toLowerCase()
+              .includes(query)
+        );
+
+      return nameMatch || tagMatch;
+    }
+  );
+
+  /*
+   * Sort workouts
+   */
+  const sortedList = [...filteredList].sort(
+    (a, b) => {
+      if (sortBy === "duration") {
+        return a.duration - b.duration;
+      }
+
+      if (sortBy === "calories") {
+        return (
+          a.caloriesBurned -
+          b.caloriesBurned
+        );
+      }
+
+      if (sortBy === "rating") {
+        return b.rating - a.rating;
+      }
+
+      return 0;
+    }
+  );
+
+  /*
+   * Remove workout from Today's Plan
+   */
+  const removeFromPlan = (id: number) => {
+    const updatedPlan = plan.filter(
+      (workout) => workout.id !== id
     );
 
-    return nameMatch || tagMatch;
-  });
+    setPlan(updatedPlan);
 
-  const sortedList = [...filteredList].sort((a, b) => {
-    if (sortBy === "duration") {
-      return a.duration - b.duration;
-    }
+    localStorage.setItem(
+      "fitlog-plan",
+      JSON.stringify(updatedPlan)
+    );
 
-    if (sortBy === "calories") {
-      return a.caloriesBurned - b.caloriesBurned;
-    }
-
-    if (sortBy === "rating") {
-      return b.rating - a.rating;
-    }
-
-    return 0;
-  });
-
-  const totalExercises = plan.length;
-
-  const totalMinutes = plan.reduce(
-    (total, workout) => total + workout.duration,
-    0
-  );
-
-  const totalCalories = plan.reduce(
-    (total, workout) => total + workout.caloriesBurned,
-    0
-  );
-
-  const removeFromPlan = (id: number) => {
-    setPlan((currentPlan) => {
-      const updatedPlan = currentPlan.filter(
-        (workout) => workout.id !== id
-      );
-
-      localStorage.setItem(
-        "fitlog-plan",
-        JSON.stringify(updatedPlan)
-      );
-
-      return updatedPlan;
-    });
-
-    window.dispatchEvent(new Event("fitlog-update"));
+    // Update Navbar immediately
+    window.dispatchEvent(
+      new Event("fitlog-update")
+    );
 
     toast("Workout removed from today's plan", {
       position: "bottom-right",
     });
   };
 
+  /*
+   * Remove workout from Saved
+   */
   const removeFromSaved = (id: number) => {
-    setSaved((currentSaved) => {
-      const updatedSaved = currentSaved.filter(
-        (workout) => workout.id !== id
-      );
+    const updatedSaved = saved.filter(
+      (workout) => workout.id !== id
+    );
 
-      localStorage.setItem(
-        "fitlog-saved",
-        JSON.stringify(updatedSaved)
-      );
+    setSaved(updatedSaved);
 
-      return updatedSaved;
-    });
+    localStorage.setItem(
+      "fitlog-saved",
+      JSON.stringify(updatedSaved)
+    );
 
-    window.dispatchEvent(new Event("fitlog-update"));
+    // Update Navbar immediately
+    window.dispatchEvent(
+      new Event("fitlog-update")
+    );
 
     toast("Workout removed from saved", {
       position: "bottom-right",
     });
   };
 
+  /*
+   * Mark workout as Done
+   *
+   * This removes the workout from Today's Plan.
+   * Saved workouts remain unchanged.
+   */
   const markAsDone = (workout: Workout) => {
-    setPlan((currentPlan) => {
-      const updatedPlan = currentPlan.filter(
-        (item) => item.id !== workout.id
-      );
+    const updatedPlan = plan.filter(
+      (item) => item.id !== workout.id
+    );
 
-      localStorage.setItem(
-        "fitlog-plan",
-        JSON.stringify(updatedPlan)
-      );
+    setPlan(updatedPlan);
 
-      return updatedPlan;
-    });
+    localStorage.setItem(
+      "fitlog-plan",
+      JSON.stringify(updatedPlan)
+    );
 
-    window.dispatchEvent(new Event("fitlog-update"));
+    // Update Navbar immediately
+    window.dispatchEvent(
+      new Event("fitlog-update")
+    );
 
-    toast(`${workout.name} marked as done`, {
-      position: "bottom-right",
-    });
+    toast(
+      `${workout.name} marked as done`,
+      {
+        position: "bottom-right",
+      }
+    );
   };
 
   return (
     <main className="min-h-screen bg-[#0b0c0f] text-white">
       <div className="mx-auto min-h-screen max-w-295">
 
+        {/* =========================
+            HEADER
+        ========================== */}
         <section className="px-5 pb-8 pt-10 md:px-8">
           <h1 className="text-4xl font-black uppercase tracking-tight">
             MY PLAN
           </h1>
 
           <p className="mt-2 text-sm text-gray-400">
-            Cap of five lifts for today. Finish them, then load more.
+            Cap of five lifts for today. Finish them,
+            then load more.
           </p>
         </section>
 
+        {/* =========================
+            STATISTICS
+        ========================== */}
         <section className="px-5 md:px-8">
           <div className="grid grid-cols-1 overflow-hidden rounded-xl border border-[#24272e] bg-[#13161c] md:grid-cols-3">
 
+            {/* Exercises */}
             <div className="border-b border-[#24272e] p-6 md:border-b-0 md:border-r">
               <p className="text-xs text-gray-500">
                 Exercises
@@ -229,6 +324,7 @@ export default function MyPlanPage() {
               </p>
             </div>
 
+            {/* Minutes */}
             <div className="border-b border-[#24272e] p-6 md:border-b-0 md:border-r">
               <p className="text-xs text-gray-500">
                 Minutes
@@ -239,6 +335,7 @@ export default function MyPlanPage() {
               </p>
             </div>
 
+            {/* Calories */}
             <div className="p-6">
               <p className="text-xs text-gray-500">
                 Calories
@@ -252,14 +349,21 @@ export default function MyPlanPage() {
           </div>
         </section>
 
+        {/* =========================
+            TABS + SEARCH + SORT
+        ========================== */}
         <section className="mt-6 flex flex-col gap-4 px-5 md:flex-row md:items-center md:justify-between md:px-8">
 
           {/* Tabs */}
           <div className="flex w-fit rounded-lg border border-[#24272e] bg-[#13161c] p-1">
 
+            {/* Today's Plan */}
             <button
               type="button"
-              onClick={() => setActiveTab("plan")}
+              onClick={() => {
+                setActiveTab("plan");
+                setSearchQuery("");
+              }}
               className={`rounded-md px-5 py-2 text-xs transition ${
                 activeTab === "plan"
                   ? "bg-[#20242c] font-semibold text-white"
@@ -269,9 +373,13 @@ export default function MyPlanPage() {
               Today`s Plan
             </button>
 
+            {/* Saved */}
             <button
               type="button"
-              onClick={() => setActiveTab("saved")}
+              onClick={() => {
+                setActiveTab("saved");
+                setSearchQuery("");
+              }}
               className={`rounded-md px-5 py-2 text-xs transition ${
                 activeTab === "saved"
                   ? "bg-[#20242c] font-semibold text-white"
@@ -283,6 +391,7 @@ export default function MyPlanPage() {
 
           </div>
 
+          {/* Search + Sort */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 
             {/* Search */}
@@ -299,7 +408,7 @@ export default function MyPlanPage() {
                   setSearchQuery(e.target.value)
                 }
                 placeholder="Search workout or muscle..."
-                className="w-full rounded-lg border border-[#24272e] bg-[#13161c] py-2.5 pl-9 pr-3 text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#c8ff00]"
+                className="w-full rounded-lg border border-[#24272e] bg-[#13161c] py-2.5 pl-9 pr-3 text-xs text-white outline-none transition placeholder:text-gray-600 focus:border-[#c8ff00]"
               />
             </div>
 
@@ -311,7 +420,6 @@ export default function MyPlanPage() {
               </span>
 
               <div className="relative">
-
                 <select
                   value={sortBy}
                   onChange={(e) =>
@@ -338,25 +446,28 @@ export default function MyPlanPage() {
                   size={14}
                   className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
                 />
-
               </div>
+
             </div>
 
           </div>
         </section>
 
+        {/* =========================
+            WORKOUT LIST
+        ========================== */}
         <section className="px-5 pb-20 pt-5 md:px-8">
 
+          {/* Loading */}
           {!isLoaded ? (
-
             <div className="flex min-h-75 items-center justify-center rounded-xl border border-[#24272e] bg-[#0e1014]">
               <div className="text-sm text-gray-500">
                 Loading workouts...
               </div>
             </div>
-
           ) : sortedList.length === 0 ? (
 
+            /* Empty State */
             <div className="flex min-h-75 flex-col items-center justify-center rounded-xl border border-dashed border-[#292d35] bg-[#0e1014] text-center">
 
               <h2 className="text-xl font-black uppercase">
@@ -368,7 +479,9 @@ export default function MyPlanPage() {
               <p className="mt-2 max-w-md text-xs text-gray-500">
                 {searchQuery
                   ? "Try searching with another workout name or muscle group."
-                  : "Browse the library and add a lift to get today moving."}
+                  : activeTab === "plan"
+                  ? "Browse the library and add a lift to get today moving."
+                  : "Save a workout for later and it will appear here."}
               </p>
 
               {!searchQuery && (
@@ -381,9 +494,9 @@ export default function MyPlanPage() {
               )}
 
             </div>
-
           ) : (
 
+            /* Workout List */
             <div className="space-y-3">
 
               {sortedList.map((workout) => (
@@ -393,6 +506,7 @@ export default function MyPlanPage() {
                   className="flex flex-col gap-5 rounded-xl border border-[#24272e] bg-[#13161c] p-3 transition hover:border-[#353a44] md:flex-row md:items-center"
                 >
 
+                  {/* Image */}
                   <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-lg md:h-20 md:w-28">
 
                     <Image
@@ -405,6 +519,7 @@ export default function MyPlanPage() {
 
                   </div>
 
+                  {/* Workout Information */}
                   <div className="min-w-0 flex-1">
 
                     <h2 className="text-sm font-black uppercase">
@@ -417,36 +532,43 @@ export default function MyPlanPage() {
 
                     <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-400">
 
+                      {/* Duration */}
                       <span className="flex items-center gap-1">
                         <Clock3
                           size={13}
                           className="text-[#c8ff00]"
                         />
+
                         {workout.duration} min
                       </span>
 
+                      {/* Calories */}
                       <span className="flex items-center gap-1">
                         <Flame
                           size={13}
                           className="text-[#c8ff00]"
                         />
+
                         {workout.caloriesBurned} kcal
                       </span>
 
+                      {/* Rating */}
                       <span className="flex items-center gap-1">
                         <Star
                           size={13}
                           className="text-[#c8ff00]"
                         />
+
                         {workout.rating}
                       </span>
 
                     </div>
-
                   </div>
 
+                  {/* Actions */}
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
 
+                    {/* View Details */}
                     <Link
                       href={`/workout/${workout.id}`}
                       className="rounded-full border border-[#343a45] px-4 py-2 text-xs text-gray-300 transition hover:bg-[#1d2027] hover:text-white"
@@ -454,10 +576,13 @@ export default function MyPlanPage() {
                       View Details
                     </Link>
 
+                    {/* Mark as Done */}
                     {activeTab === "plan" && (
                       <button
                         type="button"
-                        onClick={() => markAsDone(workout)}
+                        onClick={() =>
+                          markAsDone(workout)
+                        }
                         className="flex items-center gap-1 rounded-full bg-[#c8ff00] px-4 py-2 text-xs font-bold text-black transition hover:brightness-110"
                       >
                         <Check size={13} />
@@ -465,15 +590,24 @@ export default function MyPlanPage() {
                       </button>
                     )}
 
+                    {/* Remove */}
                     <button
                       type="button"
                       onClick={() =>
                         activeTab === "plan"
-                          ? removeFromPlan(workout.id)
-                          : removeFromSaved(workout.id)
+                          ? removeFromPlan(
+                              workout.id
+                            )
+                          : removeFromSaved(
+                              workout.id
+                            )
                       }
                       className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-[#1d2027] hover:text-white"
-                      aria-label="Remove workout"
+                      aria-label={
+                        activeTab === "plan"
+                          ? "Remove workout from plan"
+                          : "Remove workout from saved"
+                      }
                     >
                       <X size={16} />
                     </button>
@@ -485,7 +619,6 @@ export default function MyPlanPage() {
               ))}
 
             </div>
-
           )}
 
         </section>
