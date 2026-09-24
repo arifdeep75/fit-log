@@ -1,6 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+
 import { Workout } from "../../../types/workout";
+import WorkoutActions from "../../../components/WorkoutAction";
+
 
 interface WorkoutDetailsPageProps {
   params: Promise<{
@@ -14,7 +17,10 @@ const WorkoutDetailsPage = async ({
   const { id } = await params;
 
   const res = await fetch(
-    `https://api.abcz.workers.dev/api/fitlog/${id}`
+    `https://api.abcz.workers.dev/api/fitlog/${id}`,
+    {
+      cache: "no-store",
+    }
   );
 
   if (!res.ok) {
@@ -38,10 +44,9 @@ const WorkoutDetailsPage = async ({
 
   return (
     <main className="min-h-screen bg-[#0b0d10] px-4 py-8 md:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-295 gap-10 lg:grid-cols-2">
 
-      <div className="mx-auto grid max-w-300 gap-10 lg:grid-cols-2">
 
-        {/* LEFT - IMAGE */}
         <div className="overflow-hidden rounded-xl">
           <Image
             src={workout.image}
@@ -76,7 +81,6 @@ const WorkoutDetailsPage = async ({
               </span>
             ))}
           </div>
-
 
           <div className="mt-6 overflow-hidden rounded-xl border border-[#252a33] bg-[#151920]">
 
@@ -115,7 +119,6 @@ const WorkoutDetailsPage = async ({
               value={workout.rating.toString()}
               last
             />
-
           </div>
 
 
@@ -125,39 +128,25 @@ const WorkoutDetailsPage = async ({
             </h2>
 
             <ol className="mt-4 space-y-3">
-              {workout.instructions.map((instruction, index) => (
-                <li
-                  key={index}
-                  className="flex gap-3 text-xs leading-5 text-[#a0a5ae]"
-                >
-                  <span className="text-[#777d87]">
-                    {index + 1}.
-                  </span>
+              {workout.instructions.map(
+                (instruction, index) => (
+                  <li
+                    key={index}
+                    className="flex gap-3 text-xs leading-5 text-[#a0a5ae]"
+                  >
+                    <span className="text-[#777d87]">
+                      {index + 1}.
+                    </span>
 
-                  <span>{instruction}</span>
-                </li>
-              ))}
+                    <span>{instruction}</span>
+                  </li>
+                )
+              )}
             </ol>
           </section>
 
 
-          <div className="mt-7 flex flex-wrap gap-3">
-
-            <button
-              type="button"
-              className="rounded-lg bg-[#ccff00] px-5 py-3 text-xs font-bold text-black transition hover:bg-[#b8e600]"
-            >
-              Add to today`s plan
-            </button>
-
-            <button
-              type="button"
-              className="rounded-lg border border-[#303640] px-5 py-3 text-xs font-medium text-white transition hover:border-[#ccff00]"
-            >
-              ♡ Save for later
-            </button>
-
-          </div>
+          <WorkoutActions workout={workout} />
 
         </div>
       </div>
